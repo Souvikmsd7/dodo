@@ -1,36 +1,118 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dodo Checkout SDK — Demo
+
+A Next.js demo application showcasing an embedded, iframe-based checkout flow powered by the `DodoCheckout` SDK.
+
+## Overview
+
+This project demonstrates how to integrate a pop-up checkout modal into a merchant page. Clicking **Buy Now** opens a sandboxed `<iframe>` overlay that handles the full payment flow. All lifecycle events are relayed back to the parent page via `postMessage`.
+
+```
+┌──────────────────────────────┐
+│       Merchant Page          │
+│  DodoCheckout.open({...})    │
+│         │                    │
+│    iframe overlay            │
+│  ┌───────────────────┐       │
+│  │  /checkout page   │       │
+│  │  (payment form)   │       │
+│  └───────────────────┘       │
+│         │ postMessage        │
+│  onSuccess / onError / ...   │
+└──────────────────────────────┘
+```
+
+## Tech Stack
+
+| Layer      | Technology                     |
+|------------|--------------------------------|
+| Framework  | Next.js 16 (App Router)        |
+| Language   | TypeScript 5                   |
+| Runtime    | React 19                       |
+| Styling    | Inline styles (no CSS framework) |
+
+## Project Structure
+
+```
+dodo/
+├── app/
+│   ├── page.tsx          # Merchant demo page (product card + event log)
+│   ├── layout.tsx        # Root layout
+│   ├── globals.css       # Global styles
+│   └── checkout/
+│       └── page.tsx      # Checkout iframe page (payment form)
+├── lib/
+│   ├── sdk.ts            # DodoCheckout SDK (iframe manager)
+│   └── fakePayment.ts    # Simulated payment processing
+├── next.config.ts
+└── package.json
+```
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- npm
+
+### Install & Run
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## SDK Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```ts
+import { DodoCheckout } from '@/lib/sdk';
 
-## Learn More
+DodoCheckout.open({
+  productId: 'prod_123',
+  onProcessing: () => console.log('Payment processing…'),
+  onSuccess: ({ sessionId }) => console.log('Success!', sessionId),
+  onError: ({ code, message }) => console.error(code, message),
+  onClose: ({ reason }) => console.log('Closed:', reason),
+});
 
-To learn more about Next.js, take a look at the following resources:
+// Programmatically close (noop while processing)
+DodoCheckout.close();
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### `DodoCheckoutOptions`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Option         | Type                                        | Description                              |
+|----------------|---------------------------------------------|------------------------------------------|
+| `productId`    | `string`                                    | **Required.** Product identifier         |
+| `onProcessing` | `() => void`                                | Fired when payment is submitted          |
+| `onSuccess`    | `({ sessionId: string }) => void`           | Fired on successful payment              |
+| `onError`      | `({ code: string; message: string }) => void` | Fired on payment failure or timeout    |
+| `onClose`      | `({ reason: string }) => void`              | Fired when the checkout modal is closed  |
 
-## Deploy on Vercel
+### Checkout Events
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Event               | Trigger                                      |
+|---------------------|----------------------------------------------|
+| `checkout_opened`   | `DodoCheckout.open()` called                 |
+| `payment_processing`| User submits the payment form                |
+| `payment_success`   | Payment completes successfully               |
+| `payment_error`     | Payment is declined or times out             |
+| `checkout_closed`   | Overlay dismissed (Escape key or button)     |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Test Cards
+
+| Card Number           | Behaviour         |
+|-----------------------|-------------------|
+| `4242 4242 4242 4242` | Success           |
+| `4000 0000 0000 0002` | Decline           |
+| `4000 0000 0000 0341` | Fail once, then succeed |
+
+## Available Scripts
+
+| Command         | Description                  |
+|-----------------|------------------------------|
+| `npm run dev`   | Start development server     |
+| `npm run build` | Build for production         |
+| `npm run start` | Start production server      |
+| `npm run lint`  | Run ESLint                   |
